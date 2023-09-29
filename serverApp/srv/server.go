@@ -32,6 +32,7 @@ func (server *ServerImpl) Start() {
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("serverApp/public/"))))
 
 	http.HandleFunc(imageURLPrefix, server.imageHandler)
+	http.HandleFunc("/ping", server.ping)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", server.port), nil))
 }
 
@@ -62,6 +63,10 @@ func (server *ServerImpl) getImage(writer http.ResponseWriter, request *http.Req
 
 func (server *ServerImpl) uploadImage(writer http.ResponseWriter, request *http.Request) {
 
+}
+
+func (server *ServerImpl) ping(writer http.ResponseWriter, request *http.Request) {
+	fmt.Fprintf(writer, "pong")
 }
 
 func pathWithoutPrefix(utlPath string, prefix string) (path string) {
