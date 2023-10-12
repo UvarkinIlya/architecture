@@ -25,7 +25,6 @@ func NewClient(serverAddress string) *ClientImpl {
 func (c *ClientImpl) EstablishConnection() (err error) {
 	conn, err := net.Dial("tcp", c.serverAddress)
 	if err != nil {
-		log.Println("Connection not establish")
 		return
 	}
 

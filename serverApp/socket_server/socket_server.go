@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 )
 
 const BufferSize = 10000
@@ -62,7 +63,14 @@ func (s SocketServerImpl) handlerClient(conn net.Conn) {
 			break
 		}
 
-		log.Print("Received a message:", string(buf[:readLen]))
+		messages := strings.Split(string(buf[:readLen]), "\n")
+
+		for _, message := range messages {
+			if message == "" {
+				continue
+			}
+			log.Print("Received a message:", message)
+		}
 	}
 
 	_, err = conn.Write([]byte("connection closed\n"))

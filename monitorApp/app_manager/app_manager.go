@@ -80,12 +80,28 @@ func (m *ManagerImpl) Restart() (err error) {
 
 func (m *ManagerImpl) Check() {
 	for {
+		select {
+		case <-time.After(10 * time.Second):
+			log.Println("Restart service:", m.serviceName)
+			m.Restart()
+		case <-m.check():
+		}
+
+		time.Sleep(m.timeBetweenCheck)
+	}
+}
+
+func (m *ManagerImpl) check() (ch chan struct{}) {
+	ch = make(chan struct{})
+	go func() {
 		_, err := http.Get(m.checkURL)
 		if err != nil {
 			log.Println("Restart service:", m.serviceName)
 			m.Restart()
 		}
 
-		time.Sleep(m.timeBetweenCheck)
-	}
+		ch <- struct{}{}
+	}()
+
+	return ch
 }

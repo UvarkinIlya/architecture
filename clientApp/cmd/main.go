@@ -16,8 +16,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	reader := bufio.NewReader(os.Stdin)
 	client := socket_client.NewClient(os.Args[1])
-	RepeatUtilSuccess(client.EstablishConnection, 10*time.Second)
+	isEstablishConnection := RepeatUtilSuccess(client.EstablishConnection, 1*time.Second, 10)
+	if !isEstablishConnection {
+		log.Panic("Failed connection not establish")
+	}
 	defer func() {
 		err := client.CloseConnection()
 		if err != nil {
@@ -26,7 +30,6 @@ func main() {
 		}
 	}()
 
-	reader := bufio.NewReader(os.Stdin)
 	for {
 		message, err := reader.ReadString('\n')
 		if err != nil {
@@ -35,6 +38,7 @@ func main() {
 		}
 
 		err = client.SendMessage(message)
+		log.Println("Send message:", message)
 		if err != nil {
 			log.Println("Send message err:", err)
 			return
@@ -42,11 +46,14 @@ func main() {
 	}
 }
 
-func RepeatUtilSuccess(fn func() error, timeBetweenAttempts time.Duration) {
+func RepeatUtilSuccess(fn func() error, timeBetweenAttempts time.Duration, maxRepeatCount int) (isEstablish bool) {
+	repeatCount := 1
 	err := fn()
-	time.Sleep(timeBetweenAttempts)
-	for err != nil {
-		err = fn()
+	for err != nil && repeatCount < maxRepeatCount {
 		time.Sleep(timeBetweenAttempts)
+		err = fn()
+		repeatCount++
 	}
+
+	return err == nil
 }
