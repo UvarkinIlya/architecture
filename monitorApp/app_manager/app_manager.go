@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"log"
-	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -15,33 +14,28 @@ type AppManager interface {
 	Start() (err error)
 	Stop() (err error)
 	Restart() (err error)
-	Check()
 }
 
 type ManagerImpl struct {
-	serviceName      string
-	checkURL         string
-	timeBetweenCheck time.Duration
-	pid              int
+	checker Checker
+	pid     int
 }
 
-func NewManager(serviceName string, checkURL string, timeBetweenCheck time.Duration) *ManagerImpl {
+func NewManager(checker Checker) *ManagerImpl {
 	return &ManagerImpl{
-		serviceName:      serviceName,
-		checkURL:         checkURL,
-		timeBetweenCheck: timeBetweenCheck,
+		checker: checker,
 	}
 }
 
 func (m *ManagerImpl) Start() (err error) {
-	cmd := exec.Command("monitorApp/scripts/start")
+	cmd := exec.Command("scripts/start")
 
 	var bufErr bytes.Buffer
 	var bufOut bytes.Buffer
 	cmd.Stderr = &bufErr
 	cmd.Stdout = &bufOut
 
-	err = cmd.Run()
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}
@@ -50,13 +44,22 @@ func (m *ManagerImpl) Start() (err error) {
 		return errors.New(bufErr.String())
 	}
 
+	time.Sleep(500 * time.Millisecond)
 	m.pid, err = strconv.Atoi(strings.Replace(bufOut.String(), "\n", "", -1))
 	log.Println("Service pid:", m.pid)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	time.Sleep(3 * time.Second)
+	for {
+		err = m.check()
+		log.Println("Check failed:", err)
+		err = m.Restart()
+		if err != nil {
+			return err
+		}
+	}
 }
 
 func (m *ManagerImpl) Stop() (err error) {
@@ -78,30 +81,7 @@ func (m *ManagerImpl) Restart() (err error) {
 	return nil
 }
 
-func (m *ManagerImpl) Check() {
-	for {
-		select {
-		case <-time.After(10 * time.Second):
-			log.Println("Restart service:", m.serviceName)
-			m.Restart()
-		case <-m.check():
-		}
-
-		time.Sleep(m.timeBetweenCheck)
-	}
-}
-
-func (m *ManagerImpl) check() (ch chan struct{}) {
-	ch = make(chan struct{})
-	go func() {
-		_, err := http.Get(m.checkURL)
-		if err != nil {
-			log.Println("Restart service:", m.serviceName)
-			m.Restart()
-		}
-
-		ch <- struct{}{}
-	}()
-
-	return ch
+func (m *ManagerImpl) check() error {
+	<-m.checker.Check()
+	return errors.New("check failed")
 }

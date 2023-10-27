@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cd /home/iuvarkin/unn/architecture/clientApp/cmd && go build -o ../../utils/client-app
+cd /home/iuvarkin/unn/architecture/serverApp/cmd && go build -o ../../utils/server-app
+cd /home/iuvarkin/unn/architecture/monitorApp/cmd && go build -o ../../utils/monitor-app
+
+#./client-app
+#./monitor-app
