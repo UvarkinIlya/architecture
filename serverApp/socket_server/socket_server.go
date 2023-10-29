@@ -12,10 +12,12 @@ const BufferSize = 10000
 
 type SocketServer interface {
 	Start()
+	GetMessages() (messages []string)
 }
 
 type SocketServerImpl struct {
-	port int
+	port     int
+	messages []string
 }
 
 func NewSocketServer(port int) *SocketServerImpl {
@@ -38,7 +40,10 @@ func (s SocketServerImpl) Start() {
 
 		go s.handlerClient(conn)
 	}
+}
 
+func (s SocketServerImpl) GetMessages() (messages []string) {
+	return s.messages
 }
 
 func (s SocketServerImpl) handlerClient(conn net.Conn) {
@@ -70,7 +75,8 @@ func (s SocketServerImpl) handlerClient(conn net.Conn) {
 			if message == "" {
 				continue
 			}
-			logger.Info("Received a message:", message)
+			logger.Info("Received a message: %s", message)
+			s.messages = append(s.messages, message)
 		}
 	}
 

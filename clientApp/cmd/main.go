@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"architecture/logger"
@@ -41,6 +42,8 @@ func main() {
 			logger.Error("Read err: %s", err)
 			return
 		}
+
+		message = strings.TrimSuffix(message, "\n")
 
 		err = client.SendMessage(message)
 		logger.Info("Send message: %s", message)
