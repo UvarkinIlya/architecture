@@ -16,7 +16,15 @@ import (
 	"architecture/serverApp/socket_server"
 )
 
-const imageURLPrefix = "/images/"
+const (
+	imagesDir    = "public/img"
+	imageFeature = "[img]"
+)
+
+type Message struct {
+	IsImg      bool
+	TextOrPath string
+}
 
 type Server interface {
 	Start()
@@ -37,11 +45,11 @@ func NewServer(socketServer socket_server.SocketServer, port int) *ServerImpl {
 func (server *ServerImpl) Start() {
 	go server.socketServer.Start()
 
-	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("serverApp/public/"))))
+	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public/"))))
 	http.HandleFunc("/img/upload", server.uploadImage)
 	http.HandleFunc("/ping", server.ping)
 	http.HandleFunc("/watchdog/start", server.watchdogStart)
-	http.HandleFunc("messages", server.showMessages)
+	http.HandleFunc("/messages", server.showMessages)
 
 	logger.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", server.port), nil).Error())
 }
@@ -56,7 +64,7 @@ func (server *ServerImpl) imageHandler(writer http.ResponseWriter, request *http
 }
 
 func (server *ServerImpl) getImage(writer http.ResponseWriter, request *http.Request) {
-	path := pathWithoutPrefix(request.URL.String(), imageURLPrefix)
+	path := pathWithoutPrefix(request.URL.String(), imagesDir)
 
 	pathImage := struct {
 		Path string
@@ -119,17 +127,10 @@ func (server *ServerImpl) watchdogStart(writer http.ResponseWriter, request *htt
 }
 
 func (server *ServerImpl) showMessages(writer http.ResponseWriter, request *http.Request) {
-	imagesPath := pathWithoutPrefix(request.URL.String(), imageURLPrefix)
-
-	pathImage := struct {
-		Path string
-	}{
-		Path: imagesPath,
-	}
-
-	t := template.Must(template.ParseFiles("serverApp/templates/image_page.html"))
-	err := t.Execute(writer, pathImage)
+	t := template.Must(template.ParseFiles("templates/messages_page.html"))
+	err := t.Execute(writer, server.getMessages())
 	if err != nil {
+		logger.Error("Template error: %s", err)
 		return
 	}
 }
@@ -152,6 +153,25 @@ func startWatchdog(file *os.File, interval int) {
 			logger.Error("Failed watchdog due to error: %s", err.Error())
 		}
 	}
+}
+
+func (server *ServerImpl) getMessages() []Message {
+	messagesRaw := server.socketServer.GetMessages()
+
+	messages := make([]Message, 0, len(messagesRaw))
+	for _, message := range messagesRaw {
+		isImg := strings.HasPrefix(message, imageFeature)
+		if isImg {
+			message = strings.TrimPrefix(message, imageFeature)
+		}
+
+		messages = append(messages, Message{
+			IsImg:      isImg,
+			TextOrPath: message,
+		})
+	}
+
+	return messages
 }
 
 func pathWithoutPrefix(utlPath string, prefix string) (path string) {

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{.Path}}</title>
+    <title></title>
 </head>
 <style>
     img{
@@ -15,19 +15,14 @@
     }
 </style>
 <body>
-    {{ range .Message }}
-        {{ if .isImg }}
-            <img src="/public/img/{{ .Message }}" alt="Cannot load image">
+    {{ range . }}
+        {{ if .IsImg }}
+            <img src="/public/img/{{ .TextOrPath }}" alt="Cannot load image">
         {{ else }}
             <div class="message">
-                <p>{{ .Message }}</p>
+                <p>{{ .TextOrPath }}</p>
             </div>
         {{ end }}
     {{ end }}
-<!--    <img src="/public/img/{{.Path}}" alt="Cannot load image">-->
-<!--    <img src="/public/img/logo.jpg" alt="Cannot load image">-->
-<!--    <div class="message">-->
-<!--        <p>some text</p>-->
-<!--    </div>-->
 </body>
 </html>

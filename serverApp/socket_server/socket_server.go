@@ -2,6 +2,7 @@ package socket_server
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"strings"
 
@@ -16,17 +17,20 @@ type SocketServer interface {
 }
 
 type SocketServerImpl struct {
+	id       int
 	port     int
 	messages []string
 }
 
 func NewSocketServer(port int) *SocketServerImpl {
 	return &SocketServerImpl{
-		port: port,
+		id:       rand.Int(),
+		port:     port,
+		messages: make([]string, 0),
 	}
 }
 
-func (s SocketServerImpl) Start() {
+func (s *SocketServerImpl) Start() {
 	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
 	if err != nil {
 		logger.Fatal(err.Error())
@@ -42,11 +46,11 @@ func (s SocketServerImpl) Start() {
 	}
 }
 
-func (s SocketServerImpl) GetMessages() (messages []string) {
+func (s *SocketServerImpl) GetMessages() (messages []string) {
 	return s.messages
 }
 
-func (s SocketServerImpl) handlerClient(conn net.Conn) {
+func (s *SocketServerImpl) handlerClient(conn net.Conn) {
 	defer func(conn net.Conn) {
 		err := conn.Close()
 		if err != nil {
