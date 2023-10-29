@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"architecture/logger"
 
 	"architecture/modellibrary"
 )
@@ -90,7 +91,7 @@ func (w WatchdogImpl) start() (err error) {
 	}
 
 	w.pid, err = strconv.Atoi(strings.Replace(bufOut.String(), "\n", "", -1))
-	log.Println("Service pid:", w.pid)
+	logger.Error("Service pid: %s", w.pid)
 	if err != nil {
 		return err
 	}
@@ -106,11 +107,11 @@ func (w WatchdogImpl) stop() (err error) {
 func (w WatchdogImpl) restart() (err error) {
 	err = w.stop()
 	if err != nil {
-		log.Println("Failed stop err:", err.Error())
+		logger.Error("Failed stop err: %s", err.Error())
 	}
 	err = w.start()
 	if err != nil {
-		log.Println("Failed start err:", err.Error())
+		logger.Error("Failed start err: %s", err.Error())
 		return
 	}
 
@@ -121,7 +122,7 @@ func startWatchdog(reboot chan struct{}, filePath string, interval, maxWaitTime 
 	var err error
 	defer func() {
 		if err != nil {
-			log.Println("Failed watchdog, due to error", err.Error())
+			logger.Error("Failed watchdog, due to error %s", err.Error())
 		}
 	}()
 

@@ -1,9 +1,10 @@
 package monitor
 
 import (
-	"log"
 	"net/http"
 	"time"
+
+	"architecture/logger"
 )
 
 type Monitor interface {
@@ -24,7 +25,7 @@ func (m *MonitorImpl) Check() {
 	for {
 		_, err := http.Get(m.checkURL)
 		if err != nil {
-			log.Println("Reset service:", m.serviceName)
+			logger.Error("Reset service: %s", m.serviceName)
 			return
 		}
 		time.Sleep(m.timeBetweenCheck)

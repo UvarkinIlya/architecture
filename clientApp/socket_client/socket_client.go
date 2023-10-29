@@ -2,9 +2,10 @@ package socket_client
 
 import (
 	"io"
-	"log"
 	"net"
 	"os"
+
+	"architecture/logger"
 )
 
 type Client interface {
@@ -44,6 +45,6 @@ func (c *ClientImpl) CloseConnection() (err error) {
 
 func (c *ClientImpl) readMessages(dst io.Writer, src io.Reader) {
 	if _, err := io.Copy(dst, src); err != nil {
-		log.Println("Copy err", err)
+		logger.Error("Copy err: %s", err)
 	}
 }

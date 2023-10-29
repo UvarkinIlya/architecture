@@ -3,11 +3,12 @@ package app_manager
 import (
 	"bytes"
 	"errors"
-	"log"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"architecture/logger"
 )
 
 type AppManager interface {
@@ -46,7 +47,7 @@ func (m *ManagerImpl) Start() (err error) {
 
 	time.Sleep(500 * time.Millisecond)
 	m.pid, err = strconv.Atoi(strings.Replace(bufOut.String(), "\n", "", -1))
-	log.Println("Service pid:", m.pid)
+	logger.Info("Service pid: %d", m.pid)
 	if err != nil {
 		return err
 	}
@@ -54,7 +55,7 @@ func (m *ManagerImpl) Start() (err error) {
 	time.Sleep(3 * time.Second)
 	for {
 		err = m.check()
-		log.Println("Check failed:", err)
+		logger.Error("Check failed: %s", err)
 		err = m.Restart()
 		if err != nil {
 			return err
@@ -70,11 +71,11 @@ func (m *ManagerImpl) Stop() (err error) {
 func (m *ManagerImpl) Restart() (err error) {
 	err = m.Stop()
 	if err != nil {
-		log.Println("Failed stop err:", err.Error())
+		logger.Error("Failed stop err: %s", err.Error())
 	}
 	err = m.Start()
 	if err != nil {
-		log.Println("Failed start err:", err.Error())
+		logger.Error("Failed start err:", err.Error())
 		return
 	}
 

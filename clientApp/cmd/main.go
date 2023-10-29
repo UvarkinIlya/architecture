@@ -3,14 +3,19 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"time"
+
+	"architecture/logger"
 
 	"architecture/clientApp/socket_client"
 )
 
+const logFile = "client.log"
+
 func main() {
+	logger.ConfigurateLogger(logFile)
+
 	if len(os.Args) != 2 {
 		_, _ = fmt.Fprintf(os.Stderr, "Usage: %s host:port ", os.Args[0])
 		os.Exit(1)
@@ -20,12 +25,12 @@ func main() {
 	client := socket_client.NewClient(os.Args[1])
 	isEstablishConnection := RepeatUtilSuccess(client.EstablishConnection, 1*time.Second, 10)
 	if !isEstablishConnection {
-		log.Panic("Failed connection not establish")
+		logger.Fatal("Failed connection not establish")
 	}
 	defer func() {
 		err := client.CloseConnection()
 		if err != nil {
-			log.Println("Close connection err:", err)
+			logger.Error("Close connection err: %s", err)
 			return
 		}
 	}()
@@ -33,14 +38,14 @@ func main() {
 	for {
 		message, err := reader.ReadString('\n')
 		if err != nil {
-			log.Println("Read err:", err)
+			logger.Error("Read err: %s", err)
 			return
 		}
 
 		err = client.SendMessage(message)
-		log.Println("Send message:", message)
+		logger.Info("Send message: %s", message)
 		if err != nil {
-			log.Println("Send message err:", err)
+			logger.Error("Send message err: %s", err)
 			return
 		}
 	}

@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"architecture/logger"
 	"architecture/modellibrary"
+
 	"architecture/serverApp/image_manager"
 )
 
@@ -28,7 +29,7 @@ type ServerImpl struct {
 func NewServer(port int) *ServerImpl {
 	return &ServerImpl{
 		port: port,
-		//imageManager: imageManager,
+		//imageManager: imageManager,F
 	}
 }
 
@@ -38,7 +39,7 @@ func (server *ServerImpl) Start() {
 	http.HandleFunc(imageURLPrefix, server.imageHandler)
 	http.HandleFunc("/ping", server.ping)
 	http.HandleFunc("/watchdog/start", server.watchdogStart)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", server.port), nil))
+	logger.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", server.port), nil).Error())
 }
 
 func (server *ServerImpl) imageHandler(writer http.ResponseWriter, request *http.Request) {
@@ -97,7 +98,7 @@ func startWatchdog(file *os.File, interval int) {
 	for range ticker.C {
 		err := file.Truncate(0)
 		if err != nil {
-			log.Println("Failed watchdog due to error: ", err.Error())
+			logger.Error("Failed watchdog due to error: %s", err.Error())
 		}
 
 		_, err = file.Seek(0, 0)
@@ -107,7 +108,7 @@ func startWatchdog(file *os.File, interval int) {
 
 		_, err = file.Write([]byte(time.Now().Format(time.RFC3339)))
 		if err != nil {
-			log.Println("Failed watchdog due to error: ", err.Error())
+			logger.Error("Failed watchdog due to error: %s", err.Error())
 		}
 	}
 }

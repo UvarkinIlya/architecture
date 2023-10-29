@@ -2,9 +2,10 @@ package socket_server
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"strings"
+
+	"architecture/logger"
 )
 
 const BufferSize = 10000
@@ -26,7 +27,7 @@ func NewSocketServer(port int) *SocketServerImpl {
 func (s SocketServerImpl) Start() {
 	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	}
 
 	for {
@@ -44,22 +45,22 @@ func (s SocketServerImpl) handlerClient(conn net.Conn) {
 	defer func(conn net.Conn) {
 		err := conn.Close()
 		if err != nil {
-			log.Println("Close connection error: ", err)
+			logger.Error("Close connection error: %s", err)
 		}
 	}(conn)
 
-	log.Println("Handle new client")
+	logger.Info("Handle new client")
 	buf := make([]byte, BufferSize)
 
 	_, err := conn.Write([]byte("connection established\n"))
 	if err != nil {
-		log.Println("Write to connection error: ", err)
+		logger.Error("Write to connection error: %s", err)
 	}
 
 	for {
 		readLen, err := conn.Read(buf)
 		if err != nil {
-			log.Println("Read from connection error: ", err)
+			logger.Error("Read from connection error: %s", err)
 			break
 		}
 
@@ -69,12 +70,12 @@ func (s SocketServerImpl) handlerClient(conn net.Conn) {
 			if message == "" {
 				continue
 			}
-			log.Print("Received a message:", message)
+			logger.Info("Received a message:", message)
 		}
 	}
 
 	_, err = conn.Write([]byte("connection closed\n"))
 	if err != nil {
-		log.Println("Write to connection error: ", err)
+		logger.Error("Write to connection error: %s", err)
 	}
 }
