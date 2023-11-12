@@ -1,8 +1,13 @@
 package main
 
 import (
+	"fmt"
+
+	"github.com/spf13/pflag"
+
 	"architecture/logger"
 
+	"architecture/serverApp/config"
 	"architecture/serverApp/socket_server"
 	"architecture/serverApp/srv"
 )
@@ -10,10 +15,25 @@ import (
 const logFile = "server.log"
 
 func main() {
-	logger.ConfigurateLogger(logFile)
+	configPath := pflag.StringP("config", "c", "", "Config file path")
+	showHelp := pflag.BoolP("help", "h", false,
+		"Show help message")
 
-	socketServer := socket_server.NewSocketServer(7070)
+	pflag.Parse()
+	if *showHelp {
+		pflag.Usage()
+		return
+	}
 
-	server := srv.NewServer(socketServer, 8080)
+	cfg, err := config.NewConfig(*configPath)
+	if err != nil {
+		panic(fmt.Sprintf("Failed parse config due to error %s", err))
+	}
+
+	logger.ConfigurateLogger(cfg.Logger.Filename)
+
+	socketServer := socket_server.NewSocketServer(cfg.TCPSocket.Port)
+
+	server := srv.NewServer(socketServer, cfg.HTTP.Port)
 	server.Start()
 }

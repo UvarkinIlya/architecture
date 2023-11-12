@@ -1,0 +1,15 @@
+http:
+  port: '8080'
+
+tcp_socket:
+  port: '7070'
+
+logger:
+  filename: 'server-A.log'
+  level: 'debug'
+
+neighbour:
+  http:
+    port: '8081'
+  tcp_socket:
+    port: '7071'
