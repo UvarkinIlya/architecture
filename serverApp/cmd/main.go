@@ -34,6 +34,6 @@ func main() {
 
 	socketServer := socket_server.NewSocketServer(cfg.TCPSocket.Port)
 
-	server := srv.NewServer(socketServer, cfg.HTTP.Port)
+	server := srv.NewServer(socketServer, cfg.HTTP.Port, cfg.DistributedLock.Port)
 	server.Start()
 }

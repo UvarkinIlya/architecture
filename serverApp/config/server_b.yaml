@@ -4,6 +4,9 @@ http:
 tcp_socket:
   port: '7071'
 
+distributed_lock:
+  port: '4444'
+
 logger:
   filename: 'server-B.log'
   level: 'debug'

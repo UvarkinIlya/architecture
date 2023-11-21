@@ -6,10 +6,11 @@ import (
 
 type (
 	Config struct {
-		HTTP      HTTP      `mapstructure:"http"`
-		TCPSocket TCPSocket `mapstructure:"tcp_socket"`
-		Logger    Logger    `mapstructure:"logger"`
-		Neighbour Neighbour `mapstructure:"neighbour"`
+		HTTP            HTTP            `mapstructure:"http"`
+		TCPSocket       TCPSocket       `mapstructure:"tcp_socket"`
+		DistributedLock DistributedLock `mapstructure:"distributed_lock"`
+		Logger          Logger          `mapstructure:"logger"`
+		Neighbour       Neighbour       `mapstructure:"neighbour"`
 	}
 
 	HTTP struct {
@@ -17,6 +18,10 @@ type (
 	}
 
 	TCPSocket struct {
+		Port int `mapstructure:"port"`
+	}
+
+	DistributedLock struct {
 		Port int `mapstructure:"port"`
 	}
 

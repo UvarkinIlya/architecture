@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -31,18 +32,36 @@ type Server interface {
 }
 
 type ServerImpl struct {
-	socketServer socket_server.SocketServer
-	port         int
+	socketServer        socket_server.SocketServer
+	port                int
+	distributedLockPort int
 }
 
-func NewServer(socketServer socket_server.SocketServer, port int) *ServerImpl {
+func NewServer(socketServer socket_server.SocketServer, port, distributedLockPort int) *ServerImpl {
 	return &ServerImpl{
-		socketServer: socketServer,
-		port:         port,
+		socketServer:        socketServer,
+		port:                port,
+		distributedLockPort: distributedLockPort,
 	}
 }
 
 func (server *ServerImpl) Start() {
+	server.distributedLock()
+
+	server.start()
+}
+
+func (server *ServerImpl) distributedLock() {
+	_, err := net.Listen("tcp", fmt.Sprintf(":%d", server.distributedLockPort))
+	for err != nil {
+		time.Sleep(100 * time.Millisecond)
+		_, err = net.Listen("tcp", fmt.Sprintf(":%d", server.distributedLockPort))
+	}
+
+	logger.Info("Get distributed lock")
+}
+
+func (server *ServerImpl) start() {
 	go server.socketServer.Start()
 
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public/"))))
