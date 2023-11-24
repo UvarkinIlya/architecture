@@ -11,8 +11,18 @@ logger:
   filename: 'server-A.log'
   level: 'debug'
 
+storage:
+  messages_file_path: 'messages-A.json'
+
+syncer:
+  http:
+    port: '9090'
+
 neighbour:
   http:
     port: '8081'
   tcp_socket:
     port: '7071'
+  syncer:
+    http:
+      port: '9091'

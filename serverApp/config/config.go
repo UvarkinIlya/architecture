@@ -10,6 +10,8 @@ type (
 		TCPSocket       TCPSocket       `mapstructure:"tcp_socket"`
 		DistributedLock DistributedLock `mapstructure:"distributed_lock"`
 		Logger          Logger          `mapstructure:"logger"`
+		Storage         Storage         `mapstructure:"storage"`
+		Syncer          Syncer          `mapstructure:"syncer"`
 		Neighbour       Neighbour       `mapstructure:"neighbour"`
 	}
 
@@ -30,9 +32,18 @@ type (
 		Level    string `mapstructure:"level"`
 	}
 
+	Storage struct {
+		MessageFilePath string `mapstructure:"messages_file_path"`
+	}
+
+	Syncer struct {
+		HTTP `mapstructure:"http"`
+	}
+
 	Neighbour struct {
 		HTTP      `mapstructure:"http"`
 		TCPSocket `mapstructure:"tcp_socket"`
+		Syncer    `mapstructure:"syncer"`
 	}
 )
 

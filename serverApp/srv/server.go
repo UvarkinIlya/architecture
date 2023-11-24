@@ -15,6 +15,9 @@ import (
 	"architecture/modellibrary"
 
 	"architecture/serverApp/socket_server"
+	"architecture/serverApp/storage"
+	"architecture/serverApp/sync_server"
+	syncer2 "architecture/serverApp/syncer"
 )
 
 const (
@@ -33,56 +36,84 @@ type Server interface {
 
 type ServerImpl struct {
 	socketServer        socket_server.SocketServer
+	syncer              syncer2.Syncer
+	syncServer          *sync_server.SyncServer
+	db                  storage.Storage
 	port                int
 	distributedLockPort int
+	isSynced            bool
 }
 
-func NewServer(socketServer socket_server.SocketServer, port, distributedLockPort int) *ServerImpl {
+func NewServer(socketServer socket_server.SocketServer, syncer syncer2.Syncer, syncServer *sync_server.SyncServer, db storage.Storage, port, distributedLockPort int) *ServerImpl {
 	return &ServerImpl{
 		socketServer:        socketServer,
+		syncer:              syncer,
+		syncServer:          syncServer,
+		db:                  db,
 		port:                port,
 		distributedLockPort: distributedLockPort,
 	}
 }
 
-func (server *ServerImpl) Start() {
-	server.distributedLock()
+func (s *ServerImpl) Start() {
+	go s.sync()
 
-	server.start()
-}
-
-func (server *ServerImpl) distributedLock() {
-	_, err := net.Listen("tcp", fmt.Sprintf(":%d", server.distributedLockPort))
-	for err != nil {
+	isLocked := s.tryDistributedLock()
+	for !isLocked {
 		time.Sleep(100 * time.Millisecond)
-		_, err = net.Listen("tcp", fmt.Sprintf(":%d", server.distributedLockPort))
+		isLocked = s.tryDistributedLock()
 	}
 
 	logger.Info("Get distributed lock")
+	s.start()
 }
 
-func (server *ServerImpl) start() {
-	go server.socketServer.Start()
+func (s *ServerImpl) tryDistributedLock() (isLocked bool) {
+	_, err := net.Listen("tcp", fmt.Sprintf(":%d", s.distributedLockPort))
+	return err == nil
+}
+
+func (s *ServerImpl) sync() {
+	now := time.Now()
+
+	message, err := s.syncer.GetMessageSince(now)
+	for err != nil {
+		time.Sleep(500 * time.Millisecond)
+		message, err = s.syncer.GetMessageSince(now)
+	}
+
+	err = s.db.SaveMessagesAndSort(message...)
+	if err != nil {
+		logger.Error("Failed save message due to error:%s", err)
+		return
+	}
+
+	logger.Info("Message synced")
+}
+
+func (s *ServerImpl) start() {
+	go s.socketServer.Start()
+	go s.syncServer.Start()
 
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public/"))))
-	http.HandleFunc("/img/upload", server.uploadImage)
-	http.HandleFunc("/ping", server.ping)
-	http.HandleFunc("/watchdog/start", server.watchdogStart)
-	http.HandleFunc("/messages", server.showMessages)
+	http.HandleFunc("/img/upload", s.uploadImage)
+	http.HandleFunc("/ping", s.ping)
+	http.HandleFunc("/watchdog/start", s.watchdogStart)
+	http.HandleFunc("/messages", s.showMessages)
 
-	logger.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", server.port), nil).Error())
+	logger.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", s.port), nil).Error())
 }
 
-func (server *ServerImpl) imageHandler(writer http.ResponseWriter, request *http.Request) {
+func (s *ServerImpl) imageHandler(writer http.ResponseWriter, request *http.Request) {
 	switch request.Method {
 	case http.MethodGet:
-		server.getImage(writer, request)
+		s.getImage(writer, request)
 	case http.MethodPost:
-		server.uploadImage(writer, request)
+		s.uploadImage(writer, request)
 	}
 }
 
-func (server *ServerImpl) getImage(writer http.ResponseWriter, request *http.Request) {
+func (s *ServerImpl) getImage(writer http.ResponseWriter, request *http.Request) {
 	path := pathWithoutPrefix(request.URL.String(), imagesDir)
 
 	pathImage := struct {
@@ -98,7 +129,7 @@ func (server *ServerImpl) getImage(writer http.ResponseWriter, request *http.Req
 	}
 }
 
-func (server *ServerImpl) uploadImage(writer http.ResponseWriter, request *http.Request) {
+func (s *ServerImpl) uploadImage(writer http.ResponseWriter, request *http.Request) {
 	fileMultipart, handel, err := request.FormFile("img")
 	if err != nil {
 		return
@@ -123,11 +154,11 @@ func (server *ServerImpl) uploadImage(writer http.ResponseWriter, request *http.
 	}
 }
 
-func (server *ServerImpl) ping(writer http.ResponseWriter, request *http.Request) {
+func (s *ServerImpl) ping(writer http.ResponseWriter, request *http.Request) {
 	fmt.Fprintf(writer, "pong")
 }
 
-func (server *ServerImpl) watchdogStart(writer http.ResponseWriter, request *http.Request) {
+func (s *ServerImpl) watchdogStart(writer http.ResponseWriter, request *http.Request) {
 	watchdog := modellibrary.WatchdogStartRequest{}
 
 	err := json.NewDecoder(request.Body).Decode(&watchdog)
@@ -145,9 +176,9 @@ func (server *ServerImpl) watchdogStart(writer http.ResponseWriter, request *htt
 	writer.WriteHeader(http.StatusOK)
 }
 
-func (server *ServerImpl) showMessages(writer http.ResponseWriter, request *http.Request) {
+func (s *ServerImpl) showMessages(writer http.ResponseWriter, request *http.Request) {
 	t := template.Must(template.ParseFiles("templates/messages_page.html"))
-	err := t.Execute(writer, server.getMessages())
+	err := t.Execute(writer, s.getMessages())
 	if err != nil {
 		logger.Error("Template error: %s", err)
 		return
@@ -174,23 +205,22 @@ func startWatchdog(file *os.File, interval int) {
 	}
 }
 
-func (server *ServerImpl) getMessages() []Message {
-	messagesRaw := server.socketServer.GetMessages()
+func (s *ServerImpl) getMessages() []Message {
+	messages, err := s.db.GetMessages()
+	if err != nil {
+		logger.Error("Failed get message due to error:%s", err)
+		return []Message{}
+	}
 
-	messages := make([]Message, 0, len(messagesRaw))
-	for _, message := range messagesRaw {
-		isImg := strings.HasPrefix(message, imageFeature)
-		if isImg {
-			message = strings.TrimPrefix(message, imageFeature)
-		}
-
-		messages = append(messages, Message{
-			IsImg:      isImg,
-			TextOrPath: message,
+	messagesTmpl := make([]Message, 0, len(messages))
+	for _, message := range messages {
+		messagesTmpl = append(messagesTmpl, Message{
+			IsImg:      message.IsImg,
+			TextOrPath: message.Text,
 		})
 	}
 
-	return messages
+	return messagesTmpl
 }
 
 func pathWithoutPrefix(utlPath string, prefix string) (path string) {

@@ -9,6 +9,8 @@ replace architecture/logger => ../logger
 require (
 	architecture/logger v0.0.0-00010101000000-000000000000
 	architecture/modellibrary v0.0.0-00010101000000-000000000000
+	github.com/gorilla/mux v1.8.1
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.17.0
 )
 
@@ -26,7 +28,6 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.10.0 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect

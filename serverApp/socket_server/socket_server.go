@@ -7,26 +7,30 @@ import (
 	"strings"
 
 	"architecture/logger"
+
+	"architecture/serverApp/common"
+	"architecture/serverApp/storage"
 )
 
-const BufferSize = 10000
+const (
+	BufferSize = 10000
+)
 
 type SocketServer interface {
 	Start()
-	GetMessages() (messages []string)
 }
 
 type SocketServerImpl struct {
-	id       int
-	port     int
-	messages []string
+	db   storage.Storage
+	id   int
+	port int
 }
 
-func NewSocketServer(port int) *SocketServerImpl {
+func NewSocketServer(db storage.Storage, port int) *SocketServerImpl {
 	return &SocketServerImpl{
-		id:       rand.Int(),
-		port:     port,
-		messages: make([]string, 0),
+		db:   db,
+		id:   rand.Int(),
+		port: port,
 	}
 }
 
@@ -39,15 +43,12 @@ func (s *SocketServerImpl) Start() {
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
-			continue //TODO add loger
+			logger.Info("New user accept")
+			continue
 		}
 
 		go s.handlerClient(conn)
 	}
-}
-
-func (s *SocketServerImpl) GetMessages() (messages []string) {
-	return s.messages
 }
 
 func (s *SocketServerImpl) handlerClient(conn net.Conn) {
@@ -80,7 +81,11 @@ func (s *SocketServerImpl) handlerClient(conn net.Conn) {
 				continue
 			}
 			logger.Info("Received a message: %s", message)
-			s.messages = append(s.messages, message)
+			err = s.db.SaveMessages(common.NewMessage(message))
+			if err != nil {
+				logger.Error("Failed save message due to error: %s", err)
+				return
+			}
 		}
 	}
 

@@ -11,8 +11,18 @@ logger:
   filename: 'server-B.log'
   level: 'debug'
 
+storage:
+  messages_file_path: 'messages-B.json'
+
+syncer:
+  http:
+    port: '9091'
+
 neighbour:
   http:
     port: '8080'
   tcp_socket:
     port: '7070'
+  syncer:
+    http:
+      port: '9090'

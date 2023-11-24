@@ -3,13 +3,15 @@ package main
 import (
 	"fmt"
 
-	"github.com/spf13/pflag"
-
 	"architecture/logger"
+	"github.com/spf13/pflag"
 
 	"architecture/serverApp/config"
 	"architecture/serverApp/socket_server"
 	"architecture/serverApp/srv"
+	"architecture/serverApp/storage"
+	"architecture/serverApp/sync_server"
+	syncer2 "architecture/serverApp/syncer"
 )
 
 const logFile = "server.log"
@@ -32,8 +34,12 @@ func main() {
 
 	logger.ConfigurateLogger(cfg.Logger.Filename)
 
-	socketServer := socket_server.NewSocketServer(cfg.TCPSocket.Port)
+	db := storage.NewStorageImpl(cfg.Storage.MessageFilePath)
+	syncer := syncer2.NewSyncerIpml(cfg.Syncer.Port) //TODO get addr from config
+	syncServer := sync_server.NewSyncServer(db, cfg.Syncer.Port)
 
-	server := srv.NewServer(socketServer, cfg.HTTP.Port, cfg.DistributedLock.Port)
+	socketServer := socket_server.NewSocketServer(db, cfg.TCPSocket.Port)
+
+	server := srv.NewServer(socketServer, syncer, syncServer, db, cfg.HTTP.Port, cfg.DistributedLock.Port)
 	server.Start()
 }
