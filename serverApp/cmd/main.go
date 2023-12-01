@@ -11,11 +11,9 @@ import (
 	"architecture/serverApp/config"
 	"architecture/serverApp/srv"
 	"architecture/serverApp/storage"
-	"architecture/serverApp/sync_server"
+	"architecture/serverApp/sync_and_watchdog_server"
 	syncer2 "architecture/serverApp/syncer"
 )
-
-const logFile = "server.log"
 
 func main() {
 	configPath := pflag.StringP("config", "c", "", "Config file path")
@@ -37,10 +35,10 @@ func main() {
 
 	db := storage.NewStorageImpl(cfg.Storage.MessageFilePath)
 	syncer := syncer2.NewSyncerIpml(cfg.Syncer.Port) //TODO get addr from config
-	syncServer := sync_server.NewSyncServer(db, cfg.Syncer.Port)
+	SyncAndWatchdogServer := sync_and_watchdog_server.NewSyncAndWatchdogServer(db, cfg.Syncer.Port)
 
 	messageManager := message_manager.NewMessageManager(db)
 
-	server := srv.NewServer(messageManager, syncer, syncServer, db, cfg.HTTP.Port, cfg.DistributedLock.Port)
+	server := srv.NewServer(messageManager, syncer, SyncAndWatchdogServer, db, cfg.HTTP.Port, cfg.DistributedLock.Port)
 	server.Start()
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"architecture/logger"
 	"architecture/modellibrary"
 )
 
@@ -18,8 +19,13 @@ type WatchdogChecker struct {
 	maxWaitTime      time.Duration
 }
 
-func NewWatchdogChecker(startWatchdogReq modellibrary.WatchdogStartRequest, startWatchdogURL string, checkInterval time.Duration, maxWaitTime time.Duration) *WatchdogChecker {
-	return &WatchdogChecker{startWatchdogReq: startWatchdogReq, startWatchdogURL: startWatchdogURL, checkInterval: checkInterval, maxWaitTime: maxWaitTime}
+func NewWatchdogChecker(startWatchdogReq modellibrary.WatchdogStartRequest, startWatchdogURL string, checkInterval, maxWaitTime int) *WatchdogChecker {
+	return &WatchdogChecker{
+		startWatchdogReq: startWatchdogReq,
+		startWatchdogURL: startWatchdogURL,
+		checkInterval:    time.Duration(checkInterval) * time.Second,
+		maxWaitTime:      time.Duration(maxWaitTime) * time.Second,
+	}
 }
 
 func (w WatchdogChecker) Check() (failed chan struct{}) {
@@ -28,6 +34,7 @@ func (w WatchdogChecker) Check() (failed chan struct{}) {
 	go func() {
 		err := w.startServiceTick()
 		if err != nil {
+			logger.Error("Failed start server tick due to err: %s", err)
 			failed <- struct{}{}
 		}
 
@@ -39,7 +46,7 @@ func (w WatchdogChecker) Check() (failed chan struct{}) {
 }
 
 func (w WatchdogChecker) waitFailed() (err error) {
-	ticker := time.NewTicker(w.checkInterval * time.Second)
+	ticker := time.NewTicker(w.checkInterval)
 	for range ticker.C {
 		file, err := os.Open(w.startWatchdogReq.FileName)
 		if err != nil {
@@ -51,7 +58,7 @@ func (w WatchdogChecker) waitFailed() (err error) {
 			return err
 		}
 
-		if stat.ModTime().Before(time.Now().Add(-w.maxWaitTime * time.Second)) {
+		if stat.ModTime().Before(time.Now().Add(-w.maxWaitTime)) {
 			return errors.New("file update timeout")
 		}
 	}

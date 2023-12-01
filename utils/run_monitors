@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# ./build_apps
+
+(cd ../; ./monitor-app --config monitor_a.yaml &)
+(cd ../; ./monitor-app --config monitor_b.yaml &)

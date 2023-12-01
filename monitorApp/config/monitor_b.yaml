@@ -1,0 +1,13 @@
+logger:
+  filename: 'monitor-B.log'
+  level: 'debug'
+
+watchdog:
+  filename: "server-life-B"
+  start_url: "http://localhost:9091/watchdog/start"
+  interval: 5
+  max_wait: 10
+
+server:
+  config: "server_b.yaml"
+  bin_path: "server-app"

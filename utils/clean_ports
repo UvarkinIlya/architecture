@@ -1,0 +1,8 @@
+#!/bin/bash
+
+sudo kill -9 $(sudo lsof -t -i:8080)
+sudo kill -9 $(sudo lsof -t -i:9090)
+sudo kill -9 $(sudo lsof -t -i:9091)
+
+#./client-app
+#./monitor-app

@@ -3,9 +3,9 @@ package app_manager
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os/exec"
 	"strconv"
-	"strings"
 	"time"
 
 	"architecture/logger"
@@ -18,18 +18,22 @@ type AppManager interface {
 }
 
 type ManagerImpl struct {
-	checker Checker
-	pid     int
+	checker      Checker
+	serverConfig string
+	serverPath   string
+	pid          int
 }
 
-func NewManager(checker Checker) *ManagerImpl {
+func NewManager(checker Checker, serverConfig, serverPath string) *ManagerImpl {
 	return &ManagerImpl{
-		checker: checker,
+		checker:      checker,
+		serverConfig: serverConfig,
+		serverPath:   serverPath,
 	}
 }
 
 func (m *ManagerImpl) Start() (err error) {
-	cmd := exec.Command("scripts/start")
+	cmd := exec.Command(fmt.Sprintf("./utils/%s", m.serverPath), "--config", m.serverConfig)
 
 	var bufErr bytes.Buffer
 	var bufOut bytes.Buffer
@@ -38,6 +42,7 @@ func (m *ManagerImpl) Start() (err error) {
 
 	err = cmd.Start()
 	if err != nil {
+		logger.Info("Failed start server err:%s", err)
 		return err
 	}
 
@@ -45,8 +50,7 @@ func (m *ManagerImpl) Start() (err error) {
 		return errors.New(bufErr.String())
 	}
 
-	time.Sleep(500 * time.Millisecond)
-	m.pid, err = strconv.Atoi(strings.Replace(bufOut.String(), "\n", "", -1))
+	m.pid = cmd.Process.Pid
 	logger.Info("Service pid: %d", m.pid)
 	if err != nil {
 		return err

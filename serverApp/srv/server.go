@@ -12,11 +12,10 @@ import (
 	"time"
 
 	"architecture/logger"
-	"architecture/modellibrary"
 	"architecture/serverApp/message_manager"
+	"architecture/serverApp/sync_and_watchdog_server"
 
 	"architecture/serverApp/storage"
-	"architecture/serverApp/sync_server"
 	syncer2 "architecture/serverApp/syncer"
 )
 
@@ -35,32 +34,33 @@ type Server interface {
 }
 
 type ServerImpl struct {
-	messageManager      message_manager.MessageManager
-	syncer              syncer2.Syncer
-	syncServer          *sync_server.SyncServer
-	db                  storage.Storage
-	port                int
-	distributedLockPort int
-	isSynced            bool
+	messageManager        message_manager.MessageManager
+	syncer                syncer2.Syncer
+	SyncAndWatchdogServer *sync_and_watchdog_server.SyncAndWatchdogServer
+	db                    storage.Storage
+	port                  int
+	distributedLockPort   int
+	isSynced              bool
 }
 
-func NewServer(messageManager message_manager.MessageManager, syncer syncer2.Syncer, syncServer *sync_server.SyncServer, db storage.Storage, port, distributedLockPort int) *ServerImpl {
+func NewServer(messageManager message_manager.MessageManager, syncer syncer2.Syncer, SyncAndWatchdogServer *sync_and_watchdog_server.SyncAndWatchdogServer, db storage.Storage, port, distributedLockPort int) *ServerImpl {
 	return &ServerImpl{
-		messageManager:      messageManager,
-		syncer:              syncer,
-		syncServer:          syncServer,
-		db:                  db,
-		port:                port,
-		distributedLockPort: distributedLockPort,
+		messageManager:        messageManager,
+		syncer:                syncer,
+		SyncAndWatchdogServer: SyncAndWatchdogServer,
+		db:                    db,
+		port:                  port,
+		distributedLockPort:   distributedLockPort,
 	}
 }
 
 func (s *ServerImpl) Start() {
+	go s.SyncAndWatchdogServer.Start()
 	go s.sync()
 
 	isLocked := s.tryDistributedLock()
 	for !isLocked {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		isLocked = s.tryDistributedLock()
 	}
 
@@ -92,12 +92,9 @@ func (s *ServerImpl) sync() {
 }
 
 func (s *ServerImpl) start() {
-	go s.syncServer.Start()
-
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public/"))))
 	http.HandleFunc("/img/upload", s.uploadImage)
 	http.HandleFunc("/ping", s.ping)
-	http.HandleFunc("/watchdog/start", s.watchdogStart)
 	http.HandleFunc("/messages", s.showMessages)
 	http.HandleFunc("/message", s.receiveMessage)
 
@@ -158,50 +155,12 @@ func (s *ServerImpl) ping(writer http.ResponseWriter, request *http.Request) {
 	fmt.Fprintf(writer, "pong")
 }
 
-func (s *ServerImpl) watchdogStart(writer http.ResponseWriter, request *http.Request) {
-	watchdog := modellibrary.WatchdogStartRequest{}
-
-	err := json.NewDecoder(request.Body).Decode(&watchdog)
-	if err != nil {
-		return
-	}
-
-	file, err := os.Create(watchdog.FileName)
-	if err != nil {
-		return
-	}
-
-	go startWatchdog(file, watchdog.IntervalSeconds)
-
-	writer.WriteHeader(http.StatusOK)
-}
-
 func (s *ServerImpl) showMessages(writer http.ResponseWriter, request *http.Request) {
 	t := template.Must(template.ParseFiles("templates/messages_page.html"))
 	err := t.Execute(writer, s.getMessages())
 	if err != nil {
 		logger.Error("Template error: %s", err)
 		return
-	}
-}
-
-func startWatchdog(file *os.File, interval int) {
-	ticker := time.NewTicker(time.Duration(interval) * time.Second)
-	for range ticker.C {
-		err := file.Truncate(0)
-		if err != nil {
-			logger.Error("Failed watchdog due to error: %s", err.Error())
-		}
-
-		_, err = file.Seek(0, 0)
-		if err != nil {
-			return
-		}
-
-		_, err = file.Write([]byte(time.Now().Format(time.RFC3339)))
-		if err != nil {
-			logger.Error("Failed watchdog due to error: %s", err.Error())
-		}
 	}
 }
 
