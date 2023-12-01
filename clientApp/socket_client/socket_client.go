@@ -2,6 +2,7 @@ package socket_client
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,9 +16,9 @@ import (
 )
 
 type Client interface {
-	EstablishConnection() error
+	//EstablishConnection() error
 	SendMessage(message string) error
-	CloseConnection() error
+	//CloseConnection() error
 }
 
 type ClientImpl struct {
@@ -26,22 +27,22 @@ type ClientImpl struct {
 	client        *http.Client
 }
 
-func NewClient(serverAddress string) *ClientImpl {
+func NewClient(serverPort string) *ClientImpl {
 	return &ClientImpl{
-		serverAddress: serverAddress,
+		serverAddress: fmt.Sprintf("http://localhost:%s", serverPort),
 		client:        &http.Client{}}
 }
 
-func (c *ClientImpl) EstablishConnection() (err error) {
-	conn, err := net.Dial("tcp", c.serverAddress)
-	if err != nil {
-		return
-	}
-
-	c.conn = conn
-	go c.readMessages(os.Stdout, conn)
-	return
-}
+//func (c *ClientImpl) EstablishConnection() (err error) {
+//	conn, err := net.Dial("tcp", c.serverAddress)
+//	if err != nil {
+//		return
+//	}
+//
+//	c.conn = conn
+//	go c.readMessages(os.Stdout, conn)
+//	return
+//}
 
 func (c *ClientImpl) SendMessage(message string) (err error) {
 	if isFile(message) {
@@ -52,13 +53,22 @@ func (c *ClientImpl) SendMessage(message string) (err error) {
 		message = fmt.Sprintf("[img]%s", filepath.Base(message))
 	}
 
-	_, err = c.conn.Write([]byte(message))
-	return err
+	bin, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	_, err = http.Post(fmt.Sprintf("%s/message", c.serverAddress), "application/json", bytes.NewBuffer(bin))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (c *ClientImpl) CloseConnection() (err error) {
-	return c.conn.Close()
-}
+//func (c *ClientImpl) CloseConnection() (err error) {
+//	return c.conn.Close()
+//}
 
 func (c *ClientImpl) readMessages(dst io.Writer, src io.Reader) {
 	if _, err := io.Copy(dst, src); err != nil {

@@ -13,8 +13,8 @@ import (
 
 	"architecture/logger"
 	"architecture/modellibrary"
+	"architecture/serverApp/message_manager"
 
-	"architecture/serverApp/socket_server"
 	"architecture/serverApp/storage"
 	"architecture/serverApp/sync_server"
 	syncer2 "architecture/serverApp/syncer"
@@ -35,7 +35,7 @@ type Server interface {
 }
 
 type ServerImpl struct {
-	socketServer        socket_server.SocketServer
+	messageManager      message_manager.MessageManager
 	syncer              syncer2.Syncer
 	syncServer          *sync_server.SyncServer
 	db                  storage.Storage
@@ -44,9 +44,9 @@ type ServerImpl struct {
 	isSynced            bool
 }
 
-func NewServer(socketServer socket_server.SocketServer, syncer syncer2.Syncer, syncServer *sync_server.SyncServer, db storage.Storage, port, distributedLockPort int) *ServerImpl {
+func NewServer(messageManager message_manager.MessageManager, syncer syncer2.Syncer, syncServer *sync_server.SyncServer, db storage.Storage, port, distributedLockPort int) *ServerImpl {
 	return &ServerImpl{
-		socketServer:        socketServer,
+		messageManager:      messageManager,
 		syncer:              syncer,
 		syncServer:          syncServer,
 		db:                  db,
@@ -92,7 +92,6 @@ func (s *ServerImpl) sync() {
 }
 
 func (s *ServerImpl) start() {
-	go s.socketServer.Start()
 	go s.syncServer.Start()
 
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public/"))))
@@ -100,6 +99,7 @@ func (s *ServerImpl) start() {
 	http.HandleFunc("/ping", s.ping)
 	http.HandleFunc("/watchdog/start", s.watchdogStart)
 	http.HandleFunc("/messages", s.showMessages)
+	http.HandleFunc("/message", s.receiveMessage)
 
 	logger.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", s.port), nil).Error())
 }
@@ -221,6 +221,25 @@ func (s *ServerImpl) getMessages() []Message {
 	}
 
 	return messagesTmpl
+}
+
+func (s *ServerImpl) receiveMessage(writer http.ResponseWriter, request *http.Request) {
+	var message string
+
+	err := json.NewDecoder(request.Body).Decode(&message)
+	if err != nil {
+		logger.Error("Failed receive message due to error:%s", err)
+		return
+	}
+
+	logger.Info("Received message: %s", message)
+
+	err = s.messageManager.AddMessages(message)
+	if err != nil {
+		return
+	}
+
+	writer.WriteHeader(http.StatusOK)
 }
 
 func pathWithoutPrefix(utlPath string, prefix string) (path string) {

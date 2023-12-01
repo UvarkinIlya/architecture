@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"architecture/logger"
-
 	"architecture/clientApp/socket_client"
+	"architecture/logger"
 )
 
 const logFile = "client.log"
@@ -24,44 +23,36 @@ func main() {
 
 	reader := bufio.NewReader(os.Stdin)
 	client := socket_client.NewClient(os.Args[1])
-	isEstablishConnection := RepeatUtilSuccess(client.EstablishConnection, 1*time.Second, 10)
-	if !isEstablishConnection {
-		logger.Fatal("Failed connection not establish")
-	}
-	defer func() {
-		err := client.CloseConnection()
-		if err != nil {
-			logger.Error("Close connection err: %s", err)
-			return
-		}
-	}()
-
 	for {
 		message, err := reader.ReadString('\n')
 		if err != nil {
 			logger.Error("Read err: %s", err)
-			return
+			continue
 		}
 
 		message = strings.TrimSuffix(message, "\n")
-
-		err = client.SendMessage(message)
-		logger.Info("Send message: %s", message)
-		if err != nil {
-			logger.Error("Send message err: %s", err)
-			return
+		sendMessage := func() error {
+			return client.SendMessage(message)
 		}
+
+		err = RepeatUtilSuccess(sendMessage, 1*time.Second, 10)
+		if err != nil {
+			logger.Error("Failed send message: %s due to error: %s", message, err)
+			continue
+		}
+
+		logger.Info("Send message: %s", message)
 	}
 }
 
-func RepeatUtilSuccess(fn func() error, timeBetweenAttempts time.Duration, maxRepeatCount int) (isEstablish bool) {
+func RepeatUtilSuccess(fn func() error, timeBetweenAttempts time.Duration, maxRepeatCount int) (err error) {
 	repeatCount := 1
-	err := fn()
+	err = fn()
 	for err != nil && repeatCount < maxRepeatCount {
 		time.Sleep(timeBetweenAttempts)
 		err = fn()
 		repeatCount++
 	}
 
-	return err == nil
+	return err
 }

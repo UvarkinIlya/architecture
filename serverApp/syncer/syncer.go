@@ -37,7 +37,7 @@ func (s *SyncerIpml) GetMessageSince(since time.Time) (message []common.Message,
 	message = make([]common.Message, 0)
 	err = json.NewDecoder(resp.Body).Decode(&message)
 	if err != nil {
-		logger.Error("Failed get messages due to error:%s", err)
+		//logger.Error("Failed get messages due to error:%s", err)
 		return nil, err
 	}
 

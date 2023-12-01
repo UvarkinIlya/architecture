@@ -3,11 +3,12 @@ package main
 import (
 	"fmt"
 
-	"architecture/logger"
 	"github.com/spf13/pflag"
 
+	"architecture/logger"
+	"architecture/serverApp/message_manager"
+
 	"architecture/serverApp/config"
-	"architecture/serverApp/socket_server"
 	"architecture/serverApp/srv"
 	"architecture/serverApp/storage"
 	"architecture/serverApp/sync_server"
@@ -38,8 +39,8 @@ func main() {
 	syncer := syncer2.NewSyncerIpml(cfg.Syncer.Port) //TODO get addr from config
 	syncServer := sync_server.NewSyncServer(db, cfg.Syncer.Port)
 
-	socketServer := socket_server.NewSocketServer(db, cfg.TCPSocket.Port)
+	messageManager := message_manager.NewMessageManager(db)
 
-	server := srv.NewServer(socketServer, syncer, syncServer, db, cfg.HTTP.Port, cfg.DistributedLock.Port)
+	server := srv.NewServer(messageManager, syncer, syncServer, db, cfg.HTTP.Port, cfg.DistributedLock.Port)
 	server.Start()
 }

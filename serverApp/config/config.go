@@ -4,6 +4,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const configPath = "/home/iuvarkin/unn/architecture/serverApp/config"
+
 type (
 	Config struct {
 		HTTP            HTTP            `mapstructure:"http"`
@@ -47,10 +49,10 @@ type (
 	}
 )
 
-func NewConfig(configPath string) (*Config, error) {
-	viper.SetConfigName(configPath)
+func NewConfig(configName string) (*Config, error) {
+	viper.SetConfigName(configName)
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("./config")
+	viper.AddConfigPath(configPath)
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
 	}

@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"architecture/logger"
 	"github.com/gorilla/mux"
+
+	"architecture/logger"
 
 	"architecture/serverApp/common"
 	"architecture/serverApp/storage"
@@ -44,7 +45,7 @@ func (s *SyncServer) SendMessages(writer http.ResponseWriter, request *http.Requ
 
 	messages, err := s.db.GetMessagesSince(since)
 	if err != nil {
-		logger.Error("Send message failed get message from db due to err:%s", err)
+		//logger.Error("Send message failed get message from db due to err:%s", err)
 		return
 	}
 
