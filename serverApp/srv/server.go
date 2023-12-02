@@ -14,9 +14,6 @@ import (
 	"architecture/logger"
 	"architecture/serverApp/message_manager"
 	"architecture/serverApp/sync_and_watchdog_server"
-
-	"architecture/serverApp/storage"
-	syncer2 "architecture/serverApp/syncer"
 )
 
 const (
@@ -35,20 +32,16 @@ type Server interface {
 
 type ServerImpl struct {
 	messageManager        message_manager.MessageManager
-	syncer                syncer2.Syncer
 	SyncAndWatchdogServer *sync_and_watchdog_server.SyncAndWatchdogServer
-	db                    storage.Storage
 	port                  int
 	distributedLockPort   int
 	isSynced              bool
 }
 
-func NewServer(messageManager message_manager.MessageManager, syncer syncer2.Syncer, SyncAndWatchdogServer *sync_and_watchdog_server.SyncAndWatchdogServer, db storage.Storage, port, distributedLockPort int) *ServerImpl {
+func NewServer(messageManager message_manager.MessageManager, SyncAndWatchdogServer *sync_and_watchdog_server.SyncAndWatchdogServer, port, distributedLockPort int) *ServerImpl {
 	return &ServerImpl{
 		messageManager:        messageManager,
-		syncer:                syncer,
 		SyncAndWatchdogServer: SyncAndWatchdogServer,
-		db:                    db,
 		port:                  port,
 		distributedLockPort:   distributedLockPort,
 	}
@@ -74,21 +67,8 @@ func (s *ServerImpl) tryDistributedLock() (isLocked bool) {
 }
 
 func (s *ServerImpl) sync() {
-	now := time.Now()
-
-	message, err := s.syncer.GetMessageSince(now)
-	for err != nil {
-		time.Sleep(500 * time.Millisecond)
-		message, err = s.syncer.GetMessageSince(now)
-	}
-
-	err = s.db.SaveMessagesAndSort(message...)
-	if err != nil {
-		logger.Error("Failed save message due to error:%s", err)
-		return
-	}
-
-	logger.Info("Message synced")
+	s.messageManager.SyncMessages()
+	logger.Info("Messages synced")
 }
 
 func (s *ServerImpl) start() {
@@ -165,7 +145,7 @@ func (s *ServerImpl) showMessages(writer http.ResponseWriter, request *http.Requ
 }
 
 func (s *ServerImpl) getMessages() []Message {
-	messages, err := s.db.GetMessages()
+	messages, err := s.messageManager.GetMessages()
 	if err != nil {
 		logger.Error("Failed get message due to error:%s", err)
 		return []Message{}

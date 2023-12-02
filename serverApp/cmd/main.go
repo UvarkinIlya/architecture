@@ -34,11 +34,11 @@ func main() {
 	logger.ConfigurateLogger(cfg.Logger.Filename)
 
 	db := storage.NewStorageImpl(cfg.Storage.MessageFilePath)
-	syncer := syncer2.NewSyncerIpml(cfg.Syncer.Port) //TODO get addr from config
+	syncer := syncer2.NewSyncerImpl(cfg.Neighbour.Syncer.Port) //TODO get addr from config
 	SyncAndWatchdogServer := sync_and_watchdog_server.NewSyncAndWatchdogServer(db, cfg.Syncer.Port)
 
-	messageManager := message_manager.NewMessageManager(db)
+	messageManager := message_manager.NewMessageManager(db, syncer)
 
-	server := srv.NewServer(messageManager, syncer, SyncAndWatchdogServer, db, cfg.HTTP.Port, cfg.DistributedLock.Port)
+	server := srv.NewServer(messageManager, SyncAndWatchdogServer, cfg.HTTP.Port, cfg.DistributedLock.Port)
 	server.Start()
 }

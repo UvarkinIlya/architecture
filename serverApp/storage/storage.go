@@ -19,7 +19,7 @@ type Storage interface {
 
 type StorageImpl struct {
 	MessagesFilepath string
-	lock             sync.RWMutex
+	lock             sync.Mutex
 }
 
 func NewStorageImpl(messageFilepath string) *StorageImpl {
@@ -29,16 +29,25 @@ func NewStorageImpl(messageFilepath string) *StorageImpl {
 }
 
 func (s *StorageImpl) GetMessages() (messages []common.Message, err error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
 	return s.getMessages()
 }
 
 func (s *StorageImpl) getMessages() (messages []common.Message, err error) {
+	_, err = os.OpenFile(s.MessagesFilepath, os.O_RDONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return []common.Message{}, err
+	}
+
 	messagesBin, err := os.ReadFile(s.MessagesFilepath)
 	if err != nil {
 		return []common.Message{}, err
+	}
+
+	if len(messagesBin) == 0 {
+		return []common.Message{}, nil
 	}
 
 	messages = make([]common.Message, 0)
@@ -51,8 +60,8 @@ func (s *StorageImpl) getMessages() (messages []common.Message, err error) {
 }
 
 func (s *StorageImpl) GetMessagesSince(since time.Time) (messages []common.Message, err error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
 	messages, err = s.getMessages()
 	if err != nil {
@@ -83,17 +92,12 @@ func (s *StorageImpl) saveMessages(messages ...common.Message) (err error) {
 		messagesOld = make([]common.Message, 0)
 	}
 
-	file, err := os.OpenFile(s.MessagesFilepath, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-
 	bin, err := json.Marshal(append(messagesOld, messages...))
 	if err != nil {
 		return err
 	}
 
-	_, err = file.Write(bin)
+	err = os.WriteFile(s.MessagesFilepath, bin, 0644)
 	if err != nil {
 		return err
 	}
@@ -116,10 +120,31 @@ func (s *StorageImpl) SaveMessagesAndSort(newMessages ...common.Message) (err er
 		return messages[i].Time.Before(messages[j].Time)
 	})
 
-	messagesBin, err := json.Marshal(messages)
+	messagesBin, err := json.Marshal(removeDuplicate(messages))
 	if err != nil {
 		return err
 	}
 
 	return os.WriteFile(s.MessagesFilepath, messagesBin, 0644)
+}
+
+func removeDuplicate(messages []common.Message) (messageWithDuplicate []common.Message) {
+	if len(messages) == 0 {
+		return messages
+	}
+
+	messageWithDuplicate = make([]common.Message, 0, len(messages))
+
+	last := messages[0]
+	messageWithDuplicate = append(messageWithDuplicate, messages[0])
+	for i := 1; i < len(messages); i++ {
+		if last == messages[i] {
+			continue
+		}
+
+		messageWithDuplicate = append(messageWithDuplicate, messages[i])
+		last = messages[i]
+	}
+
+	return messageWithDuplicate
 }

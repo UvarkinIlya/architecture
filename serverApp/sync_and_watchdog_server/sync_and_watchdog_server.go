@@ -70,6 +70,7 @@ func (s *SyncAndWatchdogServer) ReceiveMessages(writer http.ResponseWriter, requ
 	messages := make([]common.Message, 0)
 	err := json.NewDecoder(request.Body).Decode(&messages)
 	if err != nil {
+		logger.Info("Failed sync messages:%+v due to err:%s", messages, err)
 		return
 	}
 
@@ -77,6 +78,8 @@ func (s *SyncAndWatchdogServer) ReceiveMessages(writer http.ResponseWriter, requ
 	if err != nil {
 		return
 	}
+
+	logger.Info("Sync from neighbour messages:%+v", messages)
 
 	writer.WriteHeader(http.StatusOK)
 }
