@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"architecture/logger"
+	"architecture/serverApp/auth"
 	"architecture/serverApp/message_manager"
 	"architecture/serverApp/sync_and_watchdog_server"
 )
@@ -31,6 +32,7 @@ type Server interface {
 }
 
 type ServerImpl struct {
+	auther                auth.Auther
 	messageManager        message_manager.MessageManager
 	SyncAndWatchdogServer *sync_and_watchdog_server.SyncAndWatchdogServer
 	port                  int
@@ -38,8 +40,9 @@ type ServerImpl struct {
 	isSynced              bool
 }
 
-func NewServer(messageManager message_manager.MessageManager, SyncAndWatchdogServer *sync_and_watchdog_server.SyncAndWatchdogServer, port, distributedLockPort int) *ServerImpl {
+func NewServer(auther auth.Auther, messageManager message_manager.MessageManager, SyncAndWatchdogServer *sync_and_watchdog_server.SyncAndWatchdogServer, port, distributedLockPort int) *ServerImpl {
 	return &ServerImpl{
+		auther:                auther,
 		messageManager:        messageManager,
 		SyncAndWatchdogServer: SyncAndWatchdogServer,
 		port:                  port,
@@ -73,6 +76,7 @@ func (s *ServerImpl) sync() {
 
 func (s *ServerImpl) start() {
 	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public/"))))
+	http.HandleFunc("/auth", s.auth)
 	http.HandleFunc("/img/upload", s.uploadImage)
 	http.HandleFunc("/ping", s.ping)
 	http.HandleFunc("/messages", s.showMessages)

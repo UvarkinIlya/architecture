@@ -2,10 +2,13 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"time"
+
+	"architecture/modellibrary"
 
 	"architecture/clientApp/socket_client"
 	"architecture/logger"
@@ -23,6 +26,8 @@ func main() {
 
 	reader := bufio.NewReader(os.Stdin)
 	client := socket_client.NewClient(os.Args[1])
+
+	auth(client, reader)
 	for {
 		message, err := reader.ReadString('\n')
 		if err != nil {
@@ -45,9 +50,51 @@ func main() {
 	}
 }
 
+func auth(client *socket_client.ClientImpl, reader *bufio.Reader) {
+	isAuthorised := false
+
+	for !isAuthorised {
+		fmt.Println("login:")
+		login, err := reader.ReadString('\n')
+		if err != nil {
+			logger.Error("Read err: %s", err)
+		}
+
+		fmt.Println("password:")
+		password, err := reader.ReadString('\n')
+		if err != nil {
+			logger.Error("Read err: %s", err)
+		}
+
+		user := modellibrary.User{
+			Login:    strings.TrimSuffix(login, "\n"),
+			Password: strings.TrimSuffix(password, "\n"),
+		}
+
+		isAuthorised, err = client.Auth(user)
+		if err != nil {
+			logger.Error("Auth err: %s", err)
+		}
+
+		if isAuthorised {
+			logger.Info("Authorised for %s", login)
+			fmt.Println("Authorised, pleas write messages:")
+			break
+		}
+
+		logger.Error("Failed Authorised for %s", login)
+		fmt.Println("Failed Authorised")
+	}
+}
+
 func RepeatUtilSuccess(fn func() error, timeBetweenAttempts time.Duration, maxRepeatCount int) (err error) {
 	repeatCount := 1
 	err = fn()
+	if errors.Is(err, socket_client.ErrPermissionsDenied) {
+		fmt.Println(socket_client.PermissionsDenied)
+		return err
+	}
+
 	for err != nil && repeatCount < maxRepeatCount {
 		time.Sleep(timeBetweenAttempts)
 		err = fn()

@@ -20,7 +20,7 @@ type MessageManager interface {
 }
 
 type MessageManagerImpl struct {
-	db     storage.Storage
+	db     storage.MessageStorage
 	syncer syncer2.Syncer
 }
 

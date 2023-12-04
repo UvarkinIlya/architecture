@@ -2,29 +2,39 @@ package socket_client
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"architecture/logger"
+	"architecture/modellibrary"
+)
+
+const (
+	permissionsSendMessage = "sendMessage"
+	permissionsSendImg     = "sendImg"
+	PermissionsDenied      = "permissions denied"
+)
+
+var (
+	ErrPermissionsDenied = errors.New(PermissionsDenied)
 )
 
 type Client interface {
-	//EstablishConnection() error
+	Auth(login string) error
 	SendMessage(message string) error
-	//CloseConnection() error
 }
 
 type ClientImpl struct {
 	serverAddress string
-	conn          net.Conn
 	client        *http.Client
+	permissions   map[string]struct{}
 }
 
 func NewClient(serverPort string) *ClientImpl {
@@ -33,18 +43,12 @@ func NewClient(serverPort string) *ClientImpl {
 		client:        &http.Client{}}
 }
 
-//func (c *ClientImpl) EstablishConnection() (err error) {
-//	conn, err := net.Dial("tcp", c.serverAddress)
-//	if err != nil {
-//		return
-//	}
-//
-//	c.conn = conn
-//	go c.readMessages(os.Stdout, conn)
-//	return
-//}
-
 func (c *ClientImpl) SendMessage(message string) (err error) {
+	//TODO rename
+	if !c.checkPermissions(message) {
+		return ErrPermissionsDenied
+	}
+
 	if isFile(message) {
 		if c.sendFile(message) != nil {
 			return err
@@ -53,22 +57,31 @@ func (c *ClientImpl) SendMessage(message string) (err error) {
 		message = fmt.Sprintf("[img]%s", filepath.Base(message))
 	}
 
-	bin, err := json.Marshal(message)
-	if err != nil {
-		return err
-	}
-
-	_, err = http.Post(fmt.Sprintf("%s/message", c.serverAddress), "application/json", bytes.NewBuffer(bin))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return c.sendMessage(message)
 }
 
-//func (c *ClientImpl) CloseConnection() (err error) {
-//	return c.conn.Close()
-//}
+func (c *ClientImpl) checkPermissions(message string) (ok bool) {
+	if isFile(message) {
+		_, ok = c.permissions[permissionsSendImg]
+		return ok
+	}
+
+	_, ok = c.permissions[permissionsSendMessage]
+	return ok
+}
+
+func (c *ClientImpl) Auth(user modellibrary.User) (isAuthorised bool, err error) {
+	userWithActions, statusCode, err := c.login(user)
+	if err != nil {
+		return false, err
+	}
+
+	if statusCode == http.StatusOK {
+		c.permissions = userWithActions.Actions
+	}
+
+	return statusCode == http.StatusOK, err
+}
 
 func (c *ClientImpl) readMessages(dst io.Writer, src io.Reader) {
 	if _, err := io.Copy(dst, src); err != nil {
@@ -120,4 +133,46 @@ func isFile(message string) bool {
 	}
 
 	return !errors.Is(err, os.ErrNotExist)
+}
+
+func (c *ClientImpl) sendMessage(message string) (err error) {
+	bin, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	_, err = http.Post(fmt.Sprintf("%s/message", c.serverAddress), "application/json", bytes.NewBuffer(bin))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *ClientImpl) login(user modellibrary.User) (userWithActions modellibrary.UserWithActions, statusCode int, err error) {
+	bin, err := json.Marshal(user)
+	if err != nil {
+		return modellibrary.UserWithActions{}, http.StatusInternalServerError, err
+	}
+
+	resp, err := http.Post(fmt.Sprintf("%s/auth", c.serverAddress), "application/json", bytes.NewBuffer(bin))
+	if err != nil {
+		return modellibrary.UserWithActions{}, http.StatusInternalServerError, err
+	}
+
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+
+	token := string(body)
+	userWithActionsBin, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return modellibrary.UserWithActions{}, 0, err
+	}
+
+	err = json.Unmarshal(userWithActionsBin, &userWithActions)
+	if err != nil {
+		return modellibrary.UserWithActions{}, 0, err
+	}
+
+	return userWithActions, resp.StatusCode, nil
 }

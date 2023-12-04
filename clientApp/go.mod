@@ -1,10 +1,15 @@
 module architecture/clientApp
 
-replace architecture/logger => ../logger
-
 go 1.19
 
-require architecture/logger v0.0.0-00010101000000-000000000000
+require (
+	architecture/logger v0.0.0-00010101000000-000000000000
+	architecture/modellibrary v0.0.0-00010101000000-000000000000
+)
+
+replace architecture/logger => ../logger
+
+replace architecture/modellibrary => ../modellibrary
 
 require (
 	github.com/mattn/go-colorable v0.1.13 // indirect

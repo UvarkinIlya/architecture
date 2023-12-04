@@ -36,6 +36,7 @@ type (
 
 	Storage struct {
 		MessageFilePath string `mapstructure:"messages_file_path"`
+		UsersFilePath   string `mapstructure:"users_file_path"`
 	}
 
 	Syncer struct {

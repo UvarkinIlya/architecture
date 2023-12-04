@@ -1,0 +1,17 @@
+[
+  {
+    "login": "user",
+    "password": "password",
+    "actions": {
+      "sendMessage": {}
+    }
+  },
+  {
+    "login": "admin",
+    "password": "changeMe",
+    "actions": {
+      "sendMessage": {},
+      "sendImg": {}
+    }
+  }
+]

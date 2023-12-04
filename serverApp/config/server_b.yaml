@@ -13,6 +13,7 @@ logger:
 
 storage:
   messages_file_path: 'messages-B.json'
+  users_file_path: 'users.json'
 
 syncer:
   http:
