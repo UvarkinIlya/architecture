@@ -1,11 +1,11 @@
-package common
+package modellibrary
 
 import (
 	"strings"
 	"time"
 )
 
-const imageFeature = "[img]"
+const ImageFeature = "[img]"
 
 type Message struct {
 	Text  string
@@ -22,5 +22,5 @@ func NewMessage(text string) Message {
 }
 
 func isImage(message string) bool {
-	return strings.HasPrefix(message, imageFeature)
+	return strings.HasPrefix(message, ImageFeature)
 }

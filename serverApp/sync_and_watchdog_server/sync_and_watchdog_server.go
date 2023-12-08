@@ -13,7 +13,6 @@ import (
 	"architecture/logger"
 	"architecture/modellibrary"
 
-	"architecture/serverApp/common"
 	"architecture/serverApp/storage"
 )
 
@@ -67,7 +66,7 @@ func (s *SyncAndWatchdogServer) SendMessages(writer http.ResponseWriter, request
 }
 
 func (s *SyncAndWatchdogServer) ReceiveMessages(writer http.ResponseWriter, request *http.Request) {
-	messages := make([]common.Message, 0)
+	messages := make([]modellibrary.Message, 0)
 	err := json.NewDecoder(request.Body).Decode(&messages)
 	if err != nil {
 		logger.Info("Failed sync messages:%+v due to err:%s", messages, err)

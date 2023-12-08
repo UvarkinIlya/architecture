@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"architecture/logger"
-	"architecture/serverApp/common"
+	"architecture/modellibrary"
 	"architecture/serverApp/storage"
 	syncer2 "architecture/serverApp/syncer"
 )
@@ -15,7 +15,7 @@ const (
 
 type MessageManager interface {
 	AddMessages(...string) (err error)
-	GetMessages() (messages []common.Message, err error)
+	GetMessages() (messages []modellibrary.Message, err error)
 	SyncMessages()
 }
 
@@ -32,9 +32,9 @@ func NewMessageManager(db storage.Storage, syncer syncer2.Syncer) *MessageManage
 }
 
 func (s *MessageManagerImpl) AddMessages(messages ...string) (err error) {
-	messageDB := make([]common.Message, 0, len(messages))
+	messageDB := make([]modellibrary.Message, 0, len(messages))
 	for _, msg := range messages {
-		messageDB = append(messageDB, common.NewMessage(msg))
+		messageDB = append(messageDB, modellibrary.NewMessage(msg))
 	}
 
 	err = s.db.SaveMessages(messageDB...)
@@ -52,7 +52,7 @@ func (s *MessageManagerImpl) AddMessages(messages ...string) (err error) {
 	return nil
 }
 
-func (s *MessageManagerImpl) GetMessages() (messages []common.Message, err error) {
+func (s *MessageManagerImpl) GetMessages() (messages []modellibrary.Message, err error) {
 	messages, err = s.db.GetMessages()
 	if err != nil {
 		logger.Error("Failed get messages due to error: %s", err)

@@ -6,54 +6,54 @@ import (
 	"sort"
 	"time"
 
-	"architecture/serverApp/common"
+	"architecture/modellibrary"
 )
 
 type MessageStorage interface {
-	GetMessages() (messages []common.Message, err error)
-	GetMessagesSince(since time.Time) (messages []common.Message, err error)
-	SaveMessages(messages ...common.Message) (err error)
-	SaveMessagesAndSort(messages ...common.Message) (err error)
+	GetMessages() (messages []modellibrary.Message, err error)
+	GetMessagesSince(since time.Time) (messages []modellibrary.Message, err error)
+	SaveMessages(messages ...modellibrary.Message) (err error)
+	SaveMessagesAndSort(messages ...modellibrary.Message) (err error)
 }
 
-func (s *StorageImpl) GetMessages() (messages []common.Message, err error) {
+func (s *StorageImpl) GetMessages() (messages []modellibrary.Message, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	return s.getMessages()
 }
 
-func (s *StorageImpl) getMessages() (messages []common.Message, err error) {
+func (s *StorageImpl) getMessages() (messages []modellibrary.Message, err error) {
 	_, err = os.OpenFile(s.MessagesFilepath, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
-		return []common.Message{}, err
+		return []modellibrary.Message{}, err
 	}
 
 	messagesBin, err := os.ReadFile(s.MessagesFilepath)
 	if err != nil {
-		return []common.Message{}, err
+		return []modellibrary.Message{}, err
 	}
 
 	if len(messagesBin) == 0 {
-		return []common.Message{}, nil
+		return []modellibrary.Message{}, nil
 	}
 
-	messages = make([]common.Message, 0)
+	messages = make([]modellibrary.Message, 0)
 	err = json.Unmarshal(messagesBin, &messages)
 	if err != nil {
-		return []common.Message{}, err
+		return []modellibrary.Message{}, err
 	}
 
 	return messages, nil
 }
 
-func (s *StorageImpl) GetMessagesSince(since time.Time) (messages []common.Message, err error) {
+func (s *StorageImpl) GetMessagesSince(since time.Time) (messages []modellibrary.Message, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	messages, err = s.getMessages()
 	if err != nil {
-		return []common.Message{}, err
+		return []modellibrary.Message{}, err
 	}
 
 	for i := 0; i < len(messages); i++ {
@@ -64,20 +64,20 @@ func (s *StorageImpl) GetMessagesSince(since time.Time) (messages []common.Messa
 		return messages[i:], nil
 	}
 
-	return []common.Message{}, nil
+	return []modellibrary.Message{}, nil
 }
 
-func (s *StorageImpl) SaveMessages(messages ...common.Message) (err error) {
+func (s *StorageImpl) SaveMessages(messages ...modellibrary.Message) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	return s.saveMessages(messages...)
 }
 
-func (s *StorageImpl) saveMessages(messages ...common.Message) (err error) {
+func (s *StorageImpl) saveMessages(messages ...modellibrary.Message) (err error) {
 	messagesOld, err := s.getMessages()
 	if err != nil {
-		messagesOld = make([]common.Message, 0)
+		messagesOld = make([]modellibrary.Message, 0)
 	}
 
 	bin, err := json.Marshal(append(messagesOld, messages...))
@@ -93,7 +93,7 @@ func (s *StorageImpl) saveMessages(messages ...common.Message) (err error) {
 	return nil
 }
 
-func (s *StorageImpl) SaveMessagesAndSort(newMessages ...common.Message) (err error) {
+func (s *StorageImpl) SaveMessagesAndSort(newMessages ...modellibrary.Message) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -116,12 +116,12 @@ func (s *StorageImpl) SaveMessagesAndSort(newMessages ...common.Message) (err er
 	return os.WriteFile(s.MessagesFilepath, messagesBin, 0644)
 }
 
-func removeDuplicate(messages []common.Message) (messageWithDuplicate []common.Message) {
+func removeDuplicate(messages []modellibrary.Message) (messageWithDuplicate []modellibrary.Message) {
 	if len(messages) == 0 {
 		return messages
 	}
 
-	messageWithDuplicate = make([]common.Message, 0, len(messages))
+	messageWithDuplicate = make([]modellibrary.Message, 0, len(messages))
 
 	last := messages[0]
 	messageWithDuplicate = append(messageWithDuplicate, messages[0])

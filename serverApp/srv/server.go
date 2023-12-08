@@ -79,6 +79,7 @@ func (s *ServerImpl) start() {
 	http.HandleFunc("/auth", s.auth)
 	http.HandleFunc("/img/upload", s.uploadImage)
 	http.HandleFunc("/ping", s.ping)
+	http.HandleFunc("/int/messages", s.getMessagesHandler)
 	http.HandleFunc("/messages", s.showMessages)
 	http.HandleFunc("/message", s.receiveMessage)
 
@@ -137,6 +138,20 @@ func (s *ServerImpl) uploadImage(writer http.ResponseWriter, request *http.Reque
 
 func (s *ServerImpl) ping(writer http.ResponseWriter, request *http.Request) {
 	fmt.Fprintf(writer, "pong")
+}
+
+func (s *ServerImpl) getMessagesHandler(writer http.ResponseWriter, request *http.Request) {
+	messages, err := s.messageManager.GetMessages()
+	if err != nil {
+		return
+	}
+
+	messagesBytes, err := json.Marshal(messages)
+	if err != nil {
+		return
+	}
+
+	_, _ = fmt.Fprintf(writer, string(messagesBytes))
 }
 
 func (s *ServerImpl) showMessages(writer http.ResponseWriter, request *http.Request) {

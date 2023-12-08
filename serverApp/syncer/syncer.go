@@ -8,26 +8,25 @@ import (
 	"time"
 
 	"architecture/logger"
-
-	"architecture/serverApp/common"
+	"architecture/modellibrary"
 )
 
 const messagesUrl = "http://127.0.0.1:%d/messages"
 
 type Syncer interface {
-	GetMessageSince(since time.Time) (message []common.Message, err error)
-	SendMessage(messages []common.Message) (err error)
+	GetMessageSince(since time.Time) (message []modellibrary.Message, err error)
+	SendMessage(messages []modellibrary.Message) (err error)
 }
 
 type SyncerIpml struct {
 	neighbourSyncAddr int
-	newMessageCh      chan common.Message
+	newMessageCh      chan modellibrary.Message
 }
 
 func NewSyncerImpl(neighbourSyncAddr int) *SyncerIpml {
 	syncer := &SyncerIpml{
 		neighbourSyncAddr: neighbourSyncAddr,
-		newMessageCh:      make(chan common.Message),
+		newMessageCh:      make(chan modellibrary.Message),
 	}
 
 	go syncer.syncMessages()
@@ -35,14 +34,14 @@ func NewSyncerImpl(neighbourSyncAddr int) *SyncerIpml {
 	return syncer
 }
 
-func (s *SyncerIpml) GetMessageSince(since time.Time) (message []common.Message, err error) {
+func (s *SyncerIpml) GetMessageSince(since time.Time) (message []modellibrary.Message, err error) {
 	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/messages?since=%d", s.neighbourSyncAddr, since.Unix())) //TODO change to url params
 	if err != nil {
 		//		logger.Error("Failed get messages due to error:%s", err)
 		return nil, err
 	}
 
-	message = make([]common.Message, 0)
+	message = make([]modellibrary.Message, 0)
 	err = json.NewDecoder(resp.Body).Decode(&message)
 	if err != nil {
 		//logger.Error("Failed get messages due to error:%s", err)
@@ -52,7 +51,7 @@ func (s *SyncerIpml) GetMessageSince(since time.Time) (message []common.Message,
 	return message, err
 }
 
-func (s *SyncerIpml) SendMessage(messages []common.Message) (err error) {
+func (s *SyncerIpml) SendMessage(messages []modellibrary.Message) (err error) {
 	for _, message := range messages {
 		s.newMessageCh <- message
 	}
@@ -61,8 +60,8 @@ func (s *SyncerIpml) SendMessage(messages []common.Message) (err error) {
 }
 
 func (s *SyncerIpml) syncMessages() {
-	messages := make([]common.Message, 0)
-	messageCh := make(chan common.Message)
+	messages := make([]modellibrary.Message, 0)
+	messageCh := make(chan modellibrary.Message)
 
 	go func() {
 		for {
@@ -74,7 +73,7 @@ func (s *SyncerIpml) syncMessages() {
 
 	for {
 		msg := <-messageCh
-		messageBin, err := json.Marshal([]common.Message{msg})
+		messageBin, err := json.Marshal([]modellibrary.Message{msg})
 		if err != nil {
 			logger.Error("syncMessages failed marshal due to error: %s", err)
 			continue

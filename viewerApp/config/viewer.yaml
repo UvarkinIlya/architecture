@@ -1,0 +1,10 @@
+http:
+  port: '5050'
+
+logger:
+  filename: 'viewer.log'
+  level: 'debug'
+
+server:
+  http:
+    port: '8080'
