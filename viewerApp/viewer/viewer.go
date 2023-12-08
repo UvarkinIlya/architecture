@@ -60,11 +60,6 @@ func (v *Viewer) getMessages() (messages []modellibrary.Message, err error) {
 
 func printMessages(messages ...modellibrary.Message) {
 	for _, message := range messages {
-		if message.IsImg {
-			fmt.Printf("%s%s\n", modellibrary.ImageFeature, message.Text)
-			return
-		}
-
 		fmt.Printf("%s\n", message.Text)
 	}
 }

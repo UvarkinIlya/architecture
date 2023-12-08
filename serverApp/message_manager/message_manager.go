@@ -49,7 +49,6 @@ func (s *MessageManagerImpl) AddMessages(messages ...string) (err error) {
 	err = s.syncer.SendMessage(messageDB)
 	if err != nil {
 		logger.Error("Failed sync message due to error: %s", err)
-		return err
 	}
 
 	s.publishMessages(messageDB)

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<style>
+    img{
+        height: 150px;
+    }
+
+    .message{
+        background: #ffc107;
+        width: 400px;
+    }
+</style>
+<body>
+    {{ range . }}
+        {{ if .IsImg }}
+            <img src="/public/img/{{ .TextOrPath }}" alt="Cannot load image">
+        {{ else }}
+            <div class="message">
+                <p>{{ .TextOrPath }}</p>
+            </div>
+        {{ end }}
+    {{ end }}
+</body>
+</html>
