@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"architecture/logger"
+	"architecture/modellibrary/message_broker"
 	"architecture/viewerApp/config"
 	"architecture/viewerApp/viewer"
 )
@@ -28,9 +29,16 @@ func main() {
 
 	logger.ConfigurateLogger(cfg.Logger.Filename)
 
-	viewerApp := viewer.NewViewer(cfg.Server.Port)
+	messageBroker, err := message_broker.NewMessageBroker(message_broker.SubjMessages)
+	if err != nil {
+		println("Failed start message broker failed due to error: ", err)
+		logger.Fatal("Failed start message broker failed due to error: %s", err)
+	}
+
+	viewerApp := viewer.NewViewer(messageBroker, cfg.Server.Port)
 	err = viewerApp.Start()
 	if err != nil {
-		logger.Fatal("Failed start due to error: %s", err)
+		println("Failed start Viewer due to error: ", err.Error())
+		logger.Fatal("Failed start Viewer due to error: %s", err)
 	}
 }

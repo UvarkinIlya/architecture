@@ -5,6 +5,7 @@ import (
 
 	"architecture/logger"
 	"architecture/modellibrary"
+	"architecture/modellibrary/message_broker"
 	"architecture/serverApp/storage"
 	syncer2 "architecture/serverApp/syncer"
 )
@@ -20,14 +21,16 @@ type MessageManager interface {
 }
 
 type MessageManagerImpl struct {
-	db     storage.MessageStorage
-	syncer syncer2.Syncer
+	db            storage.MessageStorage
+	syncer        syncer2.Syncer
+	messageBroker message_broker.Broker
 }
 
-func NewMessageManager(db storage.Storage, syncer syncer2.Syncer) *MessageManagerImpl {
+func NewMessageManager(db storage.Storage, syncer syncer2.Syncer, messageBroker message_broker.Broker) *MessageManagerImpl {
 	return &MessageManagerImpl{
-		db:     db,
-		syncer: syncer,
+		db:            db,
+		syncer:        syncer,
+		messageBroker: messageBroker,
 	}
 }
 
@@ -48,6 +51,8 @@ func (s *MessageManagerImpl) AddMessages(messages ...string) (err error) {
 		logger.Error("Failed sync message due to error: %s", err)
 		return err
 	}
+
+	s.publishMessages(messageDB)
 
 	return nil
 }
@@ -89,4 +94,13 @@ func (s *MessageManagerImpl) lastMessageTime() (message time.Time, err error) {
 	}
 
 	return messages[len(messages)-1].Time, nil
+}
+
+func (s *MessageManagerImpl) publishMessages(messages []modellibrary.Message) {
+	for _, message := range messages {
+		err := s.messageBroker.PublishMessage(message)
+		if err != nil {
+			logger.Error("Failed publish message %s due to error", message, err)
+		}
+	}
 }

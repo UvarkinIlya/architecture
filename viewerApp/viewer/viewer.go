@@ -5,15 +5,21 @@ import (
 	"fmt"
 	"net/http"
 
+	"architecture/logger"
 	"architecture/modellibrary"
+	"architecture/modellibrary/message_broker"
 )
 
 type Viewer struct {
-	serverPort int
+	messageBroker message_broker.Broker
+	serverPort    int
 }
 
-func NewViewer(serverPort int) *Viewer {
-	return &Viewer{serverPort: serverPort}
+func NewViewer(messageBroker message_broker.Broker, serverPort int) *Viewer {
+	return &Viewer{
+		messageBroker: messageBroker,
+		serverPort:    serverPort,
+	}
 }
 
 func (v *Viewer) Start() error {
@@ -24,7 +30,17 @@ func (v *Viewer) Start() error {
 
 	printMessages(messages...)
 
-	return nil
+	messageCh, err := v.messageBroker.Subscribe()
+	if err != nil {
+		println("Failed subscribe to messages due to err: ", err.Error())
+		logger.Fatal("Failed subscribe to messages due to err: ", err)
+	}
+
+	for {
+		message := <-messageCh
+		logger.Info("Receive new message: %s", message.Text)
+		printMessages(message)
+	}
 }
 
 func (v *Viewer) getMessages() (messages []modellibrary.Message, err error) {

@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"architecture/logger"
+	"architecture/modellibrary/message_broker"
 	"architecture/serverApp/auth"
 	"architecture/serverApp/message_manager"
 
@@ -38,7 +39,12 @@ func main() {
 	syncer := syncer2.NewSyncerImpl(cfg.Neighbour.Syncer.Port) //TODO get addr from config
 	SyncAndWatchdogServer := sync_and_watchdog_server.NewSyncAndWatchdogServer(db, cfg.Syncer.Port)
 
-	messageManager := message_manager.NewMessageManager(db, syncer)
+	messageBroker, err := message_broker.NewMessageBroker(message_broker.SubjMessages)
+	if err != nil {
+		logger.Fatal("Failed start message broker failed due to error: %s", err)
+	}
+
+	messageManager := message_manager.NewMessageManager(db, syncer, messageBroker)
 	auther := auth.NewAutherImpl(db)
 
 	server := srv.NewServer(auther, messageManager, SyncAndWatchdogServer, cfg.HTTP.Port, cfg.DistributedLock.Port)
